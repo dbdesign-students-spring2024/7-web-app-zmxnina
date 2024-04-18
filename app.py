@@ -1,7 +1,4 @@
 #!/usr/bin/env python3
-import logging
-logging.basicConfig(level=logging.DEBUG)
-
 import os
 import sys
 import subprocess
@@ -19,12 +16,11 @@ from dotenv import load_dotenv
 # if you do not yet have a file named .env, make one based on the template in env.example
 load_dotenv(override=True)  # take environment variables from .env.
 
-# instantiate the app using sentry for debugging
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_KEY")
 
 # # turn on debugging if in development mode
-# app.debug = True if os.getenv("FLASK_ENV", "development") == "development" else False
+app.debug = True if os.getenv("FLASK_ENV", "development") == "development" else False
 
 # try to connect to the database, and quit if it doesn't work
 try:
@@ -47,7 +43,6 @@ def home():
     Route for the home page.
     Simply returns to the browser the content of the index.html file located in the templates folder.
     """
-    app.logger.debug('Serving the index page.')
     return render_template("index.html")
 
 @app.route("/availability")
