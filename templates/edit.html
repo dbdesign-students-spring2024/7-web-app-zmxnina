@@ -1,18 +1,32 @@
-{% extends 'base.html' %} {% block container %}
-<h2>Update</h2>
-<p>Edit a record in the MongoDB database collection.</p>
-<form method="POST" action="{{ url_for('edit_post', mongoid=mongoid) }}">
-  <p>
-    Your name:
-    <input type="text" id="fname" name="fname" value="{{doc.name}}" /><br />
-  </p>
-  <p>
-    Message:
-    <textarea id="fmessage" name="fmessage">{{doc.message}}</textarea>
-  </p>
-  <p>
-    <a href="{{ url_for('read')}}">Cancel</a>
-    <input type="submit" name="post-btn" value="Save" />
-  </p>
+{% extends 'base.html' %} 
+
+{% block container %}
+<h2>Welcome back, Admin</h2>
+<h3>Edit an existing reservation availability for the restaurant</h3>
+<form method="POST" action="{{ url_for('edit_availability', mongoid=mongoid) }}" >
+    <label for="date">
+      Date: 
+      <input type="date" id="date" name="date" value="{{doc.date}}" min="{{ current_date }}" />
+    </label><br>
+
+    <label for="time">
+      Time:
+      <input type="time" id="time" name="time" value="{{doc.time}}" min="11:00" max="21:00" />
+    </label><br>
+
+    <label for="seat_count">
+      Number of Seats:
+      <input type="number" id="seat_count" name="seat_count" value="{{doc.seat_count}}" min="2" max="6" />
+    </label><br>
+
+    <label for="reserved">
+      Reserved: 
+      <input type="checkbox" id="reserved" name="reserved" {{ 'checked' if doc.reserved else '' }}>
+    </label><br><br>
+
+    <div class="buttons">
+      <input id="update" name="update" type="submit" value="Update">
+      <a href="{{ url_for('admin')}}">Cancel</a>
+    </div>
 </form>
 {% endblock %}

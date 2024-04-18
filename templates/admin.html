@@ -1,23 +1,18 @@
 {% extends 'base.html' %}
 
 {% block container %}
-<h2>Read</h2>
-<p>This page shows information pulled from a MongoDB database collection.
-        
+<h2>Welcome back, Admin</h2>
+<h3>You can <a href="{{ url_for('create')}}">create</a>, edit, or delete reservations for the restuarant</h3>
+<h3>All Reservations:</h3>
     {% for doc in docs %}
     <div>
         <hr class="solid">
-        <p class="post">
-            Posted by {{doc.name}} at {{ doc.created_at.strftime("%H:%M on %d %B %Y") }}
+        <p class="post" style="font-size: 1em">
+            Reservation for {{doc.seat_count}} at {{doc.time}} on {{doc.date}} {{"(Reserved)" if doc.reserved}}
             <br/>
             <a href="{{ url_for('edit',mongoid=doc._id)}}">Edit</a> | <a href="{{ url_for('delete',mongoid=doc._id)}}">Delete</a>
             <br/>
         </p>
-        <p>
-            {{ doc.message }}
-        </p>
-            
     </div>
     {%endfor%}
-</p>
 {% endblock %}

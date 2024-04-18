@@ -3,15 +3,17 @@
 import os
 import sys
 import subprocess
-import datetime
+from datetime import datetime
 
-from flask import Flask, render_template, request, redirect, url_for, make_response
+from flask import Flask, request, redirect, url_for, render_template, flash
+from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user
 
-# import logging
-import sentry_sdk
-from sentry_sdk.integrations.flask import (
-    FlaskIntegration,
-)  # delete this if not using sentry.io
+
+# # import logging
+# import sentry_sdk
+# from sentry_sdk.integrations.flask import (
+#     FlaskIntegration,
+# )  # delete this if not using sentry.io
 
 # from markupsafe import escape
 import pymongo
@@ -26,21 +28,21 @@ load_dotenv(override=True)  # take environment variables from .env.
 # initialize Sentry for help debugging... this requires an account on sentrio.io
 # you will need to set the SENTRY_DSN environment variable to the value provided by Sentry
 # delete this if not using sentry.io
-sentry_sdk.init(
-    dsn=os.getenv("SENTRY_DSN"),
-    # enable_tracing=True,
-    # Set traces_sample_rate to 1.0 to capture 100% of transactions for performance monitoring.
-    traces_sample_rate=1.0,
-    # Set profiles_sample_rate to 1.0 to profile 100% of sampled transactions.
-    # We recommend adjusting this value in production.
-    profiles_sample_rate=1.0,
-    integrations=[FlaskIntegration()],
-    traces_sample_rate=1.0,
-    send_default_pii=True,
-)
+# sentry_sdk.init(
+#     dsn=os.getenv("SENTRY_DSN"),
+#     # enable_tracing=True,
+#     # Set traces_sample_rate to 1.0 to capture 100% of transactions for performance monitoring.
+#     # Set profiles_sample_rate to 1.0 to profile 100% of sampled transactions.
+#     # We recommend adjusting this value in production.
+#     # profiles_sample_rate=1.0,
+#     integrations=[FlaskIntegration()],
+#     traces_sample_rate=1.0,
+#     send_default_pii=True,
+# )
 
 # instantiate the app using sentry for debugging
 app = Flask(__name__)
+app.secret_key = 'secret'
 
 # # turn on debugging if in development mode
 # app.debug = True if os.getenv("FLASK_ENV", "development") == "development" else False
@@ -57,11 +59,8 @@ except ConnectionFailure as e:
     # catch any database errors
     # the ping command failed, so the connection is not available.
     print(" * MongoDB connection error:", e)  # debug
-    sentry_sdk.capture_exception(e)  # send the error to sentry.io. delete if not using
+    # sentry_sdk.capture_exception(e)  # send the error to sentry.io. delete if not using
     sys.exit(1)  # this is a catastrophic error, so no reason to continue to live
-
-
-# set up the routes
 
 
 @app.route("/")
@@ -72,102 +71,139 @@ def home():
     """
     return render_template("index.html")
 
+@app.route("/availability")
+def availability():
+    docs = db.reservations.find({}).sort( "date", 1)
+    
+    if len(list(db.reservations.find({"reserved": False}))) == 0:
+        flash("We don't have any online availabilities at the moment. Please check back later.")
 
-@app.route("/read")
-def read():
-    """
-    Route for GET requests to the read page.
-    Displays some information for the user with links to other pages.
-    """
-    docs = db.exampleapp.find({}).sort(
-        "created_at", -1
-    )  # sort in descending order of created_at timestamp
-    return render_template("read.html", docs=docs)  # render the read template
+    return render_template("availability.html", docs=docs)
+
+
+@app.route('/reserve/<mongoid>')
+def reserve(mongoid):
+    db.reservations.update_one({"_id": ObjectId(mongoid)}, {"$set": {"reserved": True}})
+    
+    flash('Your reservation has been received. We look forward to welcoming you!')
+    return redirect(url_for('availability'))
+
+@app.route("/menu")
+def menu():
+    return render_template("menu.html")
+
+# Login
+login_manager = LoginManager()
+login_manager.init_app(app)
+
+
+class User(UserMixin):
+    def __init__(self, username):
+        self.id = username
+
+    def get_id(self):
+        return self.id
+
+
+@login_manager.user_loader
+def user_loader(username):
+    if username != "admin":
+        return None
+
+    return User(username)
+
+
+@login_manager.request_loader
+def request_loader(request):
+    username = request.form.get('username')
+    if username != "admin":
+        return None
+
+    return User(username)
+
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+
+        if username == 'admin' and password == 'adminpass':
+            user = User(username)
+            login_user(user)
+            return redirect(url_for('admin'))
+        
+        error = "Invalid username or password"
+        return render_template("login.html", error=error)
+    
+    # Handle GET request: display the login form without error message
+    return render_template("login.html")
+
+
+@app.route('/admin')
+@login_required
+def admin():
+    docs = db.reservations.find({}).sort('date', 1)
+    return render_template("admin.html", docs=docs)
 
 
 @app.route("/create")
+@login_required
 def create():
-    """
-    Route for GET requests to the create page.
-    Displays a form users can fill out to create a new document.
-    """
-    return render_template("create.html")  # render the create template
+    current_date = datetime.now().date()  # Get current date
+    return render_template("create.html", current_date=current_date)
 
 
 @app.route("/create", methods=["POST"])
-def create_post():
-    """
-    Route for POST requests to the create page.
-    Accepts the form submission data for a new document and saves the document to the database.
-    """
-    name = request.form["fname"]
-    message = request.form["fmessage"]
+@login_required
+def create_availability():
+    date = request.form["date"]
+    time = request.form["time"]
+    seat_count = request.form["seat_count"]
 
-    # create a new document with the data the user entered
-    doc = {"name": name, "message": message, "created_at": datetime.datetime.utcnow()}
-    db.exampleapp.insert_one(doc)  # insert a new document
+    # Create a new document with the data the user entered
+    doc = {"date": date, "time": time, "seat_count": seat_count, "reserved": 'reserved' in request.form}
+    db.reservations.insert_one(doc)  # Insert a new document
 
-    return redirect(
-        url_for("read")
-    )  # tell the browser to make a request for the /read route
+    return redirect(url_for("admin"))
 
 
 @app.route("/edit/<mongoid>")
+@login_required
 def edit(mongoid):
-    """
-    Route for GET requests to the edit page.
-    Displays a form users can fill out to edit an existing record.
-
-    Parameters:
-    mongoid (str): The MongoDB ObjectId of the record to be edited.
-    """
-    doc = db.exampleapp.find_one({"_id": ObjectId(mongoid)})
-    return render_template(
-        "edit.html", mongoid=mongoid, doc=doc
-    )  # render the edit template
+    doc = db.reservations.find_one({"_id": ObjectId(mongoid)})
+    return render_template("edit.html", mongoid=mongoid, doc=doc)  # Render the edit template
 
 
-@app.route("/edit/<mongoid>", methods=["POST"])
-def edit_post(mongoid):
-    """
-    Route for POST requests to the edit page.
-    Accepts the form submission data for the specified document and updates the document in the database.
-
-    Parameters:
-    mongoid (str): The MongoDB ObjectId of the record to be edited.
-    """
-    name = request.form["fname"]
-    message = request.form["fmessage"]
-
-    doc = {
-        # "_id": ObjectId(mongoid),
-        "name": name,
-        "message": message,
-        "created_at": datetime.datetime.utcnow(),
-    }
-
-    db.exampleapp.update_one(
-        {"_id": ObjectId(mongoid)}, {"$set": doc}  # match criteria
-    )
-
-    return redirect(
-        url_for("read")
-    )  # tell the browser to make a request for the /read route
+@app.route('/edit/<mongoid>', methods=['POST'])
+@login_required
+def edit_availability(mongoid):
+    # Update logic
+    db.reservations.update_one({"_id": ObjectId(mongoid)}, {"$set": {
+        "date": request.form['date'],
+        "time": request.form['time'],
+        "seat_count": request.form['seat_count'],
+        "reserved": 'reserved' in request.form
+    }})
+    return redirect(url_for('admin'))
 
 
-@app.route("/delete/<mongoid>")
+@app.route('/delete/<mongoid>')
+@login_required
 def delete(mongoid):
-    """
-    Route for GET requests to the delete page.
-    Deletes the specified record from the database, and then redirects the browser to the read page.
+    db.reservations.delete_one({"_id": ObjectId(mongoid)})
+    return redirect(url_for('admin'))
 
-    Parameters:
-    mongoid (str): The MongoDB ObjectId of the record to be deleted.
-    """
-    db.exampleapp.delete_one({"_id": ObjectId(mongoid)})
-    return redirect(
-        url_for("read")
-    )  # tell the web browser to make a request for the /read route.
+
+@app.route('/logout')
+def logout():
+    logout_user()
+    return 'Logged out'
+
+
+@login_manager.unauthorized_handler
+def unauthorized_handler():
+    return 'Unauthorized', 401
 
 
 @app.route("/webhook", methods=["POST"])

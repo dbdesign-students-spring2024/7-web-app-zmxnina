@@ -1,15 +1,32 @@
-{% extends 'base.html' %} {% block container %}
-<h2>Create</h2>
-<p>Create a new record in the MongoDB database collection.</p>
-<form method="POST" action="{{ url_for('create_post') }}">
-  <p>Your name: <input type="text" id="fname" name="fname" /><br /></p>
-  <p>
-    Message:
-    <textarea type="text" id="fmessage" name="fmessage"></textarea>
-  </p>
-  <p>
-    <a href="{{ url_for('read')}}">Cancel</a>
-    <input type="submit" name="post-btn" value="Post" />
-  </p>
+{% extends 'base.html' %} 
+
+{% block container %}
+<h2>Welcome back, Admin</h2>
+<h3>Create a new reservation availability for the restaurant</h3>
+<form method="POST" action="{{ url_for('create_availability') }}" >
+    <label for="date">
+      Date: 
+      <input type="date" id="date" name="date" min="{{ current_date }}" required />
+    </label><br>
+
+    <label for="time">
+      Time:
+      <input type="time" id="time" name="time" min="11:00" max="21:00" required />
+    </label><br>
+
+    <label for="seat_count">
+      Number of Seats:
+      <input type="number" id="seat_count" name="seat_count" min="2" max="6" />
+    </label><br>
+
+    <label for="reserved">
+      Reserved: 
+      <input type="checkbox" id="reserved" name="reserved" />
+    </label><br><br>
+
+    <div class="buttons">
+      <input id="create" name="create" type="submit" value="Create">
+      <a href="{{ url_for('admin')}}">Cancel</a>
+    </div>
 </form>
 {% endblock %}

@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+
+{% block container %}
+<h2>Current Reservation Availabilities: </h2>
+
+{% for message in get_flashed_messages() %}
+    <h3>{{ message }}</h3>
+{% endfor %}
+
+{% for doc in docs %}
+    {% if not doc.reserved %}
+        <div>
+            <hr class="solid">
+            <p class="post" style="font-size: 1em">
+                Reservation for {{doc.seat_count}} at {{doc.time}} on {{doc.date}}
+                <br/>
+                <a href="{{ url_for('reserve', mongoid=doc._id) }}">Reserve</a>
+                <br/>
+            </p>
+        </div>
+    {% endif %}
+{% endfor %}
+
+{% endblock %}
