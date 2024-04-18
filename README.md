@@ -31,9 +31,7 @@ This app is designed to enhance the dining experience by providing customers and
     ![Reservation management page for admin](/images/admin_crud.png)
 
 ## Deployment
-Unfortunately, despite troubleshooting efforts, I was still unable to resolve the persistent 500 server error and deploy my application on the [i6 server](https://i6.cims.nyu.edu/~mz2958/7-web-app-zmxnina/flask.cgi).
-
-I have sent in a copy of my .env file through my private channel on discord for local testing.
+A link to the deployed copy of my app on i6: [Be Na's Guest](https://i6.cims.nyu.edu/~mz2958/7-web-app-zmxnina/flask.cgi)
 
 ## Contributors
 This app was developed solely by myself.
