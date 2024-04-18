@@ -19,7 +19,7 @@ load_dotenv(override=True)  # take environment variables from .env.
 
 # instantiate the app using sentry for debugging
 app = Flask(__name__)
-app.secret_key = 'secret'
+app.secret_key = os.getenv("FLASK_KEY")
 
 # # turn on debugging if in development mode
 # app.debug = True if os.getenv("FLASK_ENV", "development") == "development" else False
