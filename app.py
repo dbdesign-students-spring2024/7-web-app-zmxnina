@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+import logging
+logging.basicConfig(level=logging.DEBUG)
 
 import os
 import sys
@@ -45,6 +47,7 @@ def home():
     Route for the home page.
     Simply returns to the browser the content of the index.html file located in the templates folder.
     """
+    app.logger.debug('Serving the index page.')
     return render_template("index.html")
 
 @app.route("/availability")
