@@ -7,6 +7,12 @@ from datetime import datetime
 from flask import Flask, request, redirect, url_for, render_template, flash, make_response
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user
 
+# import logging
+import sentry_sdk
+from sentry_sdk.integrations.flask import (
+    FlaskIntegration,
+)  # delete this if not using sentry.io
+
 import pymongo
 from pymongo.errors import ConnectionFailure
 from bson.objectid import ObjectId
@@ -16,11 +22,26 @@ from dotenv import load_dotenv
 # if you do not yet have a file named .env, make one based on the template in env.example
 load_dotenv(override=True)  # take environment variables from .env.
 
+# initialize Sentry for help debugging... this requires an account on sentrio.io
+# you will need to set the SENTRY_DSN environment variable to the value provided by Sentry
+# delete this if not using sentry.io
+sentry_sdk.init(
+    dsn=os.getenv("SENTRY_DSN"),
+    # enable_tracing=True,
+    # Set traces_sample_rate to 1.0 to capture 100% of transactions for performance monitoring.
+    traces_sample_rate=1.0,
+    # Set profiles_sample_rate to 1.0 to profile 100% of sampled transactions.
+    # We recommend adjusting this value in production.
+    profiles_sample_rate=1.0,
+    integrations=[FlaskIntegration()],
+    send_default_pii=True,
+)
+
 app = Flask(__name__)
 app.secret_key = os.getenv("FLASK_KEY")
 
 # # turn on debugging if in development mode
-app.debug = True if os.getenv("FLASK_ENV", "development") == "development" else False
+# app.debug = True if os.getenv("FLASK_ENV", "development") == "development" else False
 
 # try to connect to the database, and quit if it doesn't work
 try:
@@ -34,6 +55,7 @@ except ConnectionFailure as e:
     # catch any database errors
     # the ping command failed, so the connection is not available.
     print(" * MongoDB connection error:", e)  # debug
+    sentry_sdk.capture_exception(e)  # send the error to sentry.io. delete if not using
     sys.exit(1)  # this is a catastrophic error, so no reason to continue to live
 
 
